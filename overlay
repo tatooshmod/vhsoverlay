@@ -1,0 +1,265 @@
+#!/usr/bin/bash
+
+#zenity ask thing
+inputStr=$(zenity --forms --title="Overlay Info" --text="`echo 'Fill out the info about the overlay. Any text needs to be UPPERCASE, \nany 1-digit number needs to have a 0 in front of it to make it two digits, \nand if you dont know what to put for any numbers, \nmake up a random number for it.'`" \
+--add-entry="PLAY/PAUSE" --add-entry="counting UP/DOWN" --add-entry="AM/PM" --add-entry="Hour the recording started" --add-entry="Minute the recording started" \
+--add-entry="Second the recording started" --add-entry="Overlay length in minutes" --add-entry="Overlay length in seconds" --add-calendar="Date the recording took place")
+# the OMEGA zenity code (this opens the overlay info popup)
+IFS='|' # tells bash that | is what splits the input variables
+read -a strarr <<< $inputStr # split it i think
+
+#initialise vaiables
+playState="${strarr[0]}"            # either play/pause etc
+countOperation="${strarr[1]}"       # if it's counting up or down
+realTimeTypog="${strarr[2]}"        # am/pm
+realTimeHour="${strarr[3]}"         # the hour of recording
+realTimeMinute="${strarr[4]}"       # the minute of the of recording
+realTimeSecond="${strarr[5]}"       # the second of the recording
+runLengthMinutes="${strarr[6]}"     # the minutes the overlay will run for
+runLengthSeconds="${strarr[7]}"     # the seconds the overlay will run for
+runningMinutes="00"                 # don't change, this is the number of minutes the overlay is currently at
+runningSeconds="00"                 # don't change, this is the number of seconds the overlay is currently at
+fullDate="${strarr[8]}"             # the full date
+fileName="0"                        # the default first file name
+
+
+IFS='/' # tells bash that / is what splits the input variables
+read -a datarr <<< $fullDate # split it i think
+
+numMonth="${datarr[0]}"
+if [ "$numMonth" = "01" ]; then         # if the month equals the month number
+    realTimeMonth="JAN"                 # the month of recording
+elif [ "$numMonth" = "02" ]; then       # if the month equals the month number
+    realTimeMonth="FEB"                 # the month of recording
+elif [ "$numMonth" = "03" ]; then       # if the month equals the month number
+    realTimeMonth="MAR"                 # the month of recording
+elif [ "$numMonth" = "04" ]; then       # if the month equals the month number
+    realTimeMonth="APR"                 # the month of recording
+elif [ "$numMonth" = "05" ]; then       # if the month equals the month number
+    realTimeMonth="MAY"                 # the month of recording
+elif [ "$numMonth" = "06" ]; then       # if the month equals the month number
+    realTimeMonth="JUN"                 # the month of recording
+elif [ "$numMonth" = "07" ]; then       # if the month equals the month number
+    realTimeMonth="JUL"                 # the month of recording
+elif [ "$numMonth" = "08" ]; then       # if the month equals the month number
+    realTimeMonth="AUG"                 # the month of recording
+elif [ "$numMonth" = "09" ]; then       # if the month equals the month number
+    realTimeMonth="SEP"                 # the month of recording
+elif [ "$numMonth" = "10" ]; then       # if the month equals the month number
+    realTimeMonth="OCT"                 # the month of recording
+elif [ "$numMonth" = "11" ]; then       # if the month equals the month number
+    realTimeMonth="NOV"                 # the month of recording
+elif [ "$numMonth" = "12" ]; then       # if the month equals the month number
+    realTimeMonth="DEC"                 # the month of recording
+else
+    zenity --error --no-wrap --text="not a real month bucko"    # throw an error at bucko
+    exit 1                                                      # stop script
+fi
+
+
+if [ "$playState" = "" ]; then              # if setting isnt set
+    playState="PLAY"                        # set to a default
+fi
+if [ "$countOperation" = "" ]; then         # if setting isnt set
+    countOperation="UP"                     # set to a default
+fi
+if [ "$realTimeTypog" = "" ]; then          # if setting isnt set
+    realTimeTypog="AM"                      # set to a default
+fi
+if [ "$realTimeHour" = "" ]; then           # if setting isnt set
+    realTimeHour="01"                       # set to a default
+fi
+if [ "$realTimeMinute" = "" ]; then         # if setting isnt set
+    realTimeMinute="01"                     # set to a default
+fi
+if [ "$realTimeSecond" = "" ]; then         # if setting isnt set
+    realTimeSecond="01"                     # set to a default
+fi
+if [ "$runLengthMinutes" = "" ]; then       # if setting isnt set
+    runLengthMinutes="00"                   # set to a default
+fi
+if [ "$runLengthSeconds" = "" ]; then       # if setting isnt set
+    runLengthSeconds="30"                   # set to a default
+fi
+
+
+realTimeDay="${datarr[1]}"         # the day of the month of recording
+realTimeYear="${datarr[2]}"        # the year of recording
+echo "success"
+
+# below is checking that all the inputs are correctly inputted, if not it'll give you an error (tm)
+
+if [[ "$realTimeTypog" != "AM" && "$realTimeTypog" != "PM" ]]; then                 # test if the typography is am or pm, if not it'll error you
+    zenity --error --no-wrap --text="input either AM or PM, not $realTimeTypog"     # throw an error at bucko
+    exit 1                                                                          # stop script
+fi                                                                                  # finish the if
+if [[ "$countOperation" != "UP" && "$countOperation" != "DOWN" ]]; then                 # test if it's counting up or down, if none are true it errors
+    zenity --error --no-wrap --text="input either UP or DOWN, not $countOperation"      # throw an error at bucko
+    exit 1                                                                              # stop script
+fi                                                                                      # finish the if
+realTimeHourChar=${#realTimeHour}
+if [[ "$realTimeHour" > "12" ]] || [ "$realTimeHourChar" != "2"  ]; then                                    # test if the user understands time TM
+    zenity --error --no-wrap --text="Hours go up to 12 $realTimeTypog, not $realTimeHour $realTimeTypog."   # throw an error at bucko
+    exit 1                                                                                                  # stop script
+fi                                                                                                          # finish the if
+realTimeMinuteChar=${#realTimeMinute}                                                                                                                                           # reads how many digits are in the seconds
+if [[ "$realTimeMinute" > "59" ]] || [ "$realTimeMinuteChar" != "2"  ]; then                                                                                                    # test if the user understands time TM
+    zenity --error --no-wrap --text="Minutes work like this, $realTimeHour:59, not $realTimeHour:$realTimeMinute. \n \nlike cmon man you learned this in like first grade"      # throw an error at bucko
+    exit 1                                                                                                                                                                      # stop script
+fi                                                                                                                                                                              # finish the if
+realTimeSecondChar=${#realTimeSecond}                                                                                                                                                                       # reads how many digits are in the seconds
+if [[ "$realTimeSecond" > "59" ]] || [ "$realTimeSecondChar" != "2"  ]; then                                                                                                                                # test if the user understands time TM
+    zenity --error --no-wrap --text="Seconds work like this, $realTimeMinute and 59 seconds, not $realTimeMinute and $realTimeSecond seconds. \n \nlike cmon man you learned this in like first grade"      # throw an error at bucko
+    exit 1                                                                                                                                                                                                  # stop script
+fi 
+runLengthMinutesChar=${#runLengthMinutes}                                                                                                                                                                                                                       # reads how many digits are in the seconds
+if [[ "$runLengthMinutes" > "59" ]] || [ "$runLengthMinutesChar" != "2"  ]; then                                                                                                                                                                                # test if the user understands time TM
+    zenity --error --no-wrap --text="Minutes work like this, 59:05, not $runLengthMinutes:05. \n \nlike cmon man you learned this in like first grade \n(if you're trying to get it to run for an hour, i haven't wrote this to handle 1 hour, so i apologise)"
+    exit 1                                                                                                                                                                                                                                                      # stop script
+fi  
+runLengthSecondsChar=${#runLengthSeconds}                                                                                                                                               # reads how many digits are in the seconds
+if [[ "$runLengthSeconds" > "59" ]] || [ "$runLengthSecondsChar" != "2"  ]; then                                                                                                        # test if the user understands time TM
+    zenity --error --no-wrap --text="Seconds work like this, $runLengthMinutes:59, not $runLengthMinutes:$runLengthSeconds. \n \nlike cmon man you learned this in like first grade"    # throw an error at bucko
+    exit 1                                                                                                                                                                              # stop script
+fi 
+
+if [ ! -d "./img/" ]; then  # check if ./img exists
+    echo "not poggers"      # express the truth about this ordeal
+    mkdir img               # create the directory img to make the world poggers again
+fi
+if [ ! -d "./assets/" ]; then   # check if ./assets exists
+    echo "not poggers"          # express the truth about this ordeal
+    mkdir assets                # create the directory img to make the world poggers again
+fi
+if [ ! -e "./assets/transparent.png" ]; then                                                                            # check if ./assets exists
+    echo "not poggers"                                                                                                  # express the truth about this ordeal
+    wget https://media.discordapp.net/attachments/549010492803514379/820742769621991424/transparent.png -P ./assets/    # create the directory img to make the world poggers again
+fi
+if [ ! -e "./assets/VCR_OSD_MONO.ttf" ]; then                                                                           # check if ./assets exists
+    echo "not poggers"                                                                                                  # express the truth about this ordeal
+    wget https://cdn.discordapp.com/attachments/549010492803514379/820742749867212830/VCR_OSD_MONO.ttf -P ./assets/     # create the directory img to make the world poggers again
+fi
+
+#echo all the settings
+echo $playState                                             # tells you if it's playing/pausing
+echo ""                                                     # just a line break cause it looks nice
+echo $realTimeTypog" "$realTimeHour":"$realTimeMinute       # tells you the duration that the overlay will run for
+echo "running for "$runLengthMinutes":"$runLengthSeconds    # tells you how long it'll be running for
+echo "success"                                              # tells you it did the thing
+
+echo the full thing
+echo ""
+echo ""
+
+            echo $playState"     "$runningMinutes":"$runningSeconds                     # this tells you that it's working. pretty nice
+            echo ""                                                                     # break
+            echo $realTimeTypog" "$realTimeHour":"$realTimeMinute                       # tells you the time that it was recorded
+            echo $realTimeMonth" "$realTimeDay" "$realTimeYear                          # tells you the date that it was recorded
+
+            fileName=$(expr $fileName + 1)      # do the thing math for the next file name
+                                                # do the image thing
+            convert ./assets/transparent.png -pointsize 50 -fill white -font ./assets/VCR_OSD_MONO.ttf -draw "text 64,88 '$playState' text 430,88 '--:--' text 64,374 '$realTimeTypog $realTimeHour:$realTimeMinute' text 64,414 '$realTimeMonth $realTimeDay $realTimeYear'" ./img/$fileName.png
+            fileName=$(expr $fileName + 1)      # do the thing math for the next file name
+            convert ./assets/transparent.png -pointsize 50 -fill white -font ./assets/VCR_OSD_MONO.ttf -draw "text 64,88 '$playState' text 430,88 '00:00' text 64,374 '$realTimeTypog $realTimeHour:$realTimeMinute' text 64,414 '$realTimeMonth $realTimeDay $realTimeYear'" ./img/$fileName.png
+
+if [ "$countOperation" = "UP" ]; then                                   # if you set it to count up
+                                                                        # until the current minutes in seconds match up with what's set above, it'll count up
+    until [ $runningMinutes = $runLengthMinutes ] && [ $runningSeconds = $runLengthSeconds ]; do    
+
+        if [ "$runningSeconds" != "59" ]; then                          # if the seconds are not at 59 count up
+            runningSeconds=$(expr $runningSeconds + 1)                  # this counts up and does the thing
+            secondsChar=${#runningSeconds}                              # reads how many digits are in the seconds
+            if [ "$secondsChar" = "1" ]; then                           # check if the number of digits in the seconds is 2 or not
+                runningSeconds="0${runningSeconds}"                     # if it's 1 it adds a 0 to the beginning of the seconds because that's how vcr is format TM
+            fi                                                          # tells the script its finished IDOT
+            if [ "$runningSeconds" = "$realTimeSecond" ]; then          # if the running seconds equals the second the recording supposedly started
+                realTimeMinute=$(expr $realTimeMinute + 1)              # this rolls the realtime minutes counter 1 up
+                realMinutesChar=${#realTimeMinute}                                      # check how many digits are in the realtime minutes
+            if [ "$realMinutesChar" != "2" ] || [ "$realMinutesChar" = "1" ]; then      # check if the number of digits in the realtime minutes is 2 or not
+                realTimeMinute="0${realTimeMinute}"                                     # if it's 1 it adds a 0 to the beginning of the realtime minutes because that's how vcr is format TM
+            fi                                                                          # tells the script its finished IDOT
+            fi                                                          # it finished another THING
+            echo $playState"     "$runningMinutes":"$runningSeconds     # this tells you that it's working. pretty nice
+            echo ""                                                                     # break
+            echo $realTimeTypog" "$realTimeHour":"$realTimeMinute                       # tells you the time that it was recorded
+            echo $realTimeMonth" "$realTimeDay" "$realTimeYear                          # tells you the date that it was recorded
+            fileName=$(expr $fileName + 1)      # do the thing math for the next file name
+                                                # do the image thing
+            convert ./assets/transparent.png -pointsize 50 -fill white -font ./assets/VCR_OSD_MONO.ttf -draw "text 64,88 '$playState' text 430,88 '$runningMinutes:$runningSeconds' text 64,374 '$realTimeTypog $realTimeHour:$realTimeMinute' text 64,414 '$realTimeMonth $realTimeDay $realTimeYear'" ./img/$fileName.png
+            sleep 0.001                                                                 # how fast you want time to move (only if you're a god (also only for debugging crap))
+            clear                                                                       # gives the illusion its changing
+        else                                                            # tells the script THERES MORE
+            runningMinutes=$(expr $runningMinutes + 1)                  # this rolls the minutes counter 1 up
+            runningSeconds="00"                                         # resets seconds
+            minutesChar=${#runningMinutes}                              # check how many digits are in the minutes
+            if [ "$minutesChar" = "1" ]; then                           # check if the number of digits in the minutes is 2 or not
+                runningMinutes="0${runningMinutes}"                     # if it's 1 it adds a 0 to the beginning of the minutes because that's how vcr is format TM
+            fi                                                          # tells the script its finished IDOT
+            echo $playState"     "$runningMinutes":"$runningSeconds     # this tells you that it's working. pretty nice
+            echo ""                                                                     # break
+            echo $realTimeTypog" "$realTimeHour":"$realTimeMinute                       # tells you the time that it was recorded
+            echo $realTimeMonth" "$realTimeDay" "$realTimeYear                          # tells you the date that it was recorded
+            fileName=$(expr $fileName + 1)      # do the thing math for the next file name
+                                                # do the image thing
+            convert ./assets/transparent.png -pointsize 50 -fill white -font ./assets/VCR_OSD_MONO.ttf -draw "text 64,88 '$playState' text 430,88 '$runningMinutes:$runningSeconds' text 64,374 '$realTimeTypog $realTimeHour:$realTimeMinute' text 64,414 '$realTimeMonth $realTimeDay $realTimeYear'" ./img/$fileName.png
+            sleep 0.001                                                                 # how fast you want time to move (only if you're a god (also only for debugging crap))
+            clear                                                                       # gives the illusion its changing
+        fi                                                              # it's finished lol
+    done                                                                # the script MUST KNOW if its done or else it'll cry like a baby trust me
+
+
+
+elif [ "$countOperation" = "DOWN" ]; then   # if you set it to count down
+
+    runningMinutes=$runLengthMinutes    # sets the current minutes to the time its supposed to count from
+    runningSeconds=$runLengthSeconds    # sets the current seconds to the time its supposed to count from
+    runLengthMinutes="00"               # don't change - sets the minutes the script needs to count to
+    runLengthSeconds="00"               # don't change - sets the minutes the script needs to count to
+    echo "running for "$runningMinutes":"$runningSeconds
+
+                                                                        # until the current minutes in seconds match up with what's set above, it'll count up
+    until [ $runningMinutes = $runLengthMinutes ] && [ $runningSeconds = $runLengthSeconds ]; do    
+
+        if [ "$runningSeconds" != "00" ]; then                          # if the seconds are not at 59 count up
+            runningSeconds=$(expr $runningSeconds - 1)                  # this counts up and does the thing
+            secondsChar=${#runningSeconds}                              # reads how many digits are in the seconds
+            if [ "$secondsChar" = "1" ]; then                           # check if the number of digits in the seconds is 2 or not
+                runningSeconds="0${runningSeconds}"                     # if it's 1 it adds a 0 to the beginning of the seconds because that's how vcr is format TM
+            fi                                                          # tells the script its finished IDOT
+            if [ "$runningSeconds" = "$realTimeSecond" ]; then          # if the running seconds equals the second the recording supposedly started
+                realTimeMinute=$(expr $realTimeMinute + 1)              # this rolls the realtime minutes counter 1 up
+                realMinutesChar=${#realTimeMinute}                                      # check how many digits are in the realtime minutes
+            if [ "$realMinutesChar" != "2" ] || [ "$realMinutesChar" = "1" ]; then      # check if the number of digits in the realtime minutes is 2 or not
+                realTimeMinute="0${realTimeMinute}"                                     # if it's 1 it adds a 0 to the beginning of the realtime minutes because that's how vcr is format TM
+            fi                                                                          # tells the script its finished IDOT
+            fi                                                          # it finished another THING
+            echo $playState"     "$runningMinutes":"$runningSeconds     # this tells you that it's working. pretty nice
+            echo ""                                                                     # break
+            echo $realTimeTypog" "$realTimeHour":"$realTimeMinute                       # tells you the time that it was recorded
+            echo $realTimeMonth" "$realTimeDay" "$realTimeYear                          # tells you the date that it was recorded
+            fileName=$(expr $fileName + 1)      # do the thing math for the next file name
+                                                # do the image thing
+            convert ./assets/transparent.png -pointsize 50 -fill white -font ./assets/VCR_OSD_MONO.ttf -draw "text 64,88 '$playState' text 430,88 '$runningMinutes:$runningSeconds' text 64,374 '$realTimeTypog $realTimeHour:$realTimeMinute' text 64,414 '$realTimeMonth $realTimeDay $realTimeYear'" ./img/$fileName.png
+            sleep 0.001                                                                 # how fast you want time to move (only if you're a god (also only for debugging crap))
+            clear                                                                       # gives the illusion its changing
+        else                                                            # tells the script THERES MORE
+            runningMinutes=$(expr $runningMinutes - 1)                  # this rolls the minutes counter 1 up
+            runningSeconds="59"                                         # resets seconds
+            minutesChar=${#runningMinutes}                              # check how many digits are in the minutes
+            if [ "$minutesChar" = "1" ]; then                           # check if the number of digits in the minutes is 2 or not
+                runningMinutes="0${runningMinutes}"                     # if it's 1 it adds a 0 to the beginning of the minutes because that's how vcr is format TM
+            fi                                                          # tells the script its finished IDOT
+            echo $playState"     "$runningMinutes":"$runningSeconds     # this tells you that it's working. pretty nice
+            echo ""                                                                     # break
+            echo $realTimeTypog" "$realTimeHour":"$realTimeMinute                       # tells you the time that it was recorded
+            echo $realTimeMonth" "$realTimeDay" "$realTimeYear                          # tells you the date that it was recorded
+            fileName=$(expr $fileName + 1)      # do the thing math for the next file name
+                                                # do the image thing
+            convert ./assets/transparent.png -pointsize 50 -fill white -font ./assets/VCR_OSD_MONO.ttf -draw "text 64,88 '$playState' text 430,88 '$runningMinutes:$runningSeconds' text 64,374 '$realTimeTypog $realTimeHour:$realTimeMinute' text 64,414 '$realTimeMonth $realTimeDay $realTimeYear'" ./img/$fileName.png
+            sleep 0.001                                                                 # how fast you want time to move (only if you're a god (also only for debugging crap))
+            clear                                                                       # gives the illusion its changing
+        fi                                                              # it's finished lol
+    done                                                                # the script MUST KNOW if its done or else it'll cry like a baby trust me
+fi
+
+zenity --notification --text="YOOOOOOOOOOOOOOOO the vhs overlay is done LEL"
